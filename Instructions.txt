@@ -1,0 +1,33 @@
+Assaf hi,
+Thank you for your time and interest in Zebra Medical Vision.
+Our next step in the process is the following technical home task:
+
+We will simulate data and evaluate it.
+
+3 variables with demographic info in the following structure (csv) 
+patient-id, age, gender, variable
+
+the variables are:
+1) simulated bone density - float number normally distributed across the population between -3 and 3 relevant female median age 68 male median age 62 with twice as much female than male
+2) simulated fatty liver - integer between 10 and 150 random distribution with 50% within the range of 10-45 and all the rest
+3) simulated coronary calcium - random variable between 0 1600 with 25% 0-100 50% 100-400 and 50% 400-1600
+
+not all the population has all the variables but there is at least 50% overlap between every two variables
+
+Task 1) please provide the code lines creating the simulated csv's
+
+Task 2) please provide the code that creates a pandas table joining all overlap data
+
+Task 3) please provide code that given a bucket size (window size over the variables) it will group patients into buckets and plot histogram of the buckets
+
+Task 4) bonus 1: provide code to create the maximal dataset over the joined overlap table where you have 20% men 80% women and 50% between age 55-75 all the rest evenly distributed with ages in bucket size 5
+
+Task 5) bonus 2: please provide code that builds a model (any) that uses demography and two variables and predicts the third, shortly explain what you did
+
+ ** if you have any questions or something is not clear you can do:
+1) make any work assumption you want (as long as you can explain it)
+2) call me directly and ask
+Regards,
+
+David
+
