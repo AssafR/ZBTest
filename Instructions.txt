@@ -49,3 +49,4 @@ plot(bone_density,100)
 bone_density = np.random.normal(0,1,no_patients_1)
 plot(bone_density,100)
 
+Assumption: Task (3) groups the buckets of one field at a time
