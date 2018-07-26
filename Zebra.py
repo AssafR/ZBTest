@@ -1,25 +1,21 @@
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
+from numpy import genfromtxt
 
-
-def random_numbers_by_median(low,high,median,no_elements):
-    lower_half = np.random.random_integers(low,median, size=(no_elements // 2,1));
-    upper_half = np.random.random_integers(median,high,size=(no_elements -(no_elements // 2),1));
-    res = np.vstack([lower_half,upper_half])
+def random_ints_by_median(low, high, median, no_elements):
+    """ Return an array of random integers with range and median """
+    lower_half = np.random.random_integers(low,median,size=no_elements//2);
+    upper_half = np.random.random_integers(median,high,size=(no_elements -(no_elements // 2)));
+    res = np.concatenate((lower_half,upper_half))
     return res
 
 def get_genders_by_distribution(percent_female,total):
     """ Return vector size total with first part size percent containing 'F' the rest 'M' """
     females = int(total * percent_female);
     males = total - females;
-    genders = (np.vstack([np.full((females,1),'F',dtype=str), np.full((males,1),'M',dtype=str)])) # First females, then males
+    genders = np.concatenate((np.full(females,'F',dtype=str), np.full(males,'M',dtype=str)))
     return genders
-
-def write_array_to_csv(np_array,columns,filename):
-    df = pd.DataFrame(np_array)
-    df.columns = columns
-    df.to_csv(filename,index=False)
 
 def plot(stats1,range,no_bins=1000):
     count, bins, ignored = plt.hist(stats1, range, density=False)
@@ -28,50 +24,90 @@ def plot(stats1,range,no_bins=1000):
     #plt.plot(bins, color='r')
     plt.show()
 
-def test_median_for_field_value(cohort,val_field_num,value,numeric_field_num):
-    with_value = (cohort[:, val_field_num] == value)
-    nums_in_field = cohort[with_value][:, numeric_field_num]
+def test_median_for_field_value(records, val_field_name, value, numeric_field_name):
+    """ Calculate median for numeric field only in rows filtered by value of another field """
+    with_value = (records[val_field_name] == value)
+    nums_in_field = records[with_value][numeric_field_name]
     return np.median(nums_in_field)
 
 def truncated_normal_distribution(length,mu,sigma,left,right):
-    ### Return normal distribution of certain length making sure not to have values outside [left,right] ###
-    outside_range = np.full(length,True,dtype=bool)
+    """ Return normal distribution of certain length making sure not to have values outside [left,right] """
     result = np.zeros(length);
-    while(np.sum(outside_range)>0):
+    outside_range = np.full(length,True,dtype=bool)
+    while(np.sum(outside_range)>0): # Re-draw all elements which fell outside the range
         new_values = np.random.normal(mu,sigma,np.sum(outside_range));
         result[outside_range] = new_values;
         outside_range = [(result[:] < left) | (result[:] > right)];
-    result.shape = (length,1)
     return result
+
+def write_record_to_csv(np_array, filename):
+    df = pd.DataFrame(np_array)
+    df.to_csv(filename,index=False)
+
+def read_record_from_csv(filename):
+    df = pd.read_csv(filename,header=0,sep=',')
+    return df.to_records(index=False)
+    #return genfromtxt(filename, delimiter=',',dtype=None)
+
+def split_male_female(total,female_ratio):
+    females = int(female_ratio * total)
+    males = total - females
+    return females,males
+
+def create_bone_cohort(ids):
+    no_patients = ids.size
+    females, males = split_male_female(no_patients,female_ratio)
+    ages_female = random_ints_by_median(10, 100, 68, females)
+    ages_male   = random_ints_by_median(10, 100, 62, males)
+    ages = np.concatenate([ages_female, ages_male])
+    genders = get_genders_by_distribution(female_ratio, no_patients)
+    bone_density = truncated_normal_distribution(no_patients, 0, 1, -3, 3)
+    cohort = np.rec.fromarrays([ids, ages, genders, bone_density],
+                               names=['id', 'age', 'gender', 'bone_density'])
+    return cohort
+
+def create_liver_cohort(ids):
+    no_patients = ids.size
+    females, males = split_male_female(no_patients,0.5)
+    genders = get_genders_by_distribution(0.5, no_patients)
+    ages = truncated_normal_distribution(no_patients,40,20,20,90)
+    liver =  random_ints_by_median(10, 150, 45, no_patients)
+    print(np.median(liver))
+    cohort = np.rec.fromarrays([ids,ages,genders,liver],names=['id', 'age', 'gender', 'liver'])
+    return cohort
+
+def create_calcium_cohort(no_patients,ids):
+    females, males = split_male_female(no_patients,0.5)
+    genders = get_genders_by_distribution(0.5, no_patients)
+    ages = truncated_normal_distribution(no_patients,50,20,20,90)
+    #calcium =
+
 
 no_patients_1 = 500
 no_patients_2 = 500
 no_patients_3 = 500
+
+
 female_ratio = 2/3
 
 total_patients = no_patients_1 + no_patients_2 + no_patients_3;
-random_ids = np.random.random_integers(100000,3000000, total_patients).reshape(total_patients,1)
-
-
-
-females = int(female_ratio * no_patients_1)
-males = no_patients_1 - females
-ages_female = random_numbers_by_median(10,100,68,females)
-ages_male   = random_numbers_by_median(10,100,62,males)
-ages = np.vstack([ages_female,ages_male])
-
-genders = get_genders_by_distribution(female_ratio,no_patients_1)
+random_ids = np.random.random_integers(100000,3000000, total_patients)
 random_ids_1 = random_ids[0:no_patients_1]
-bone_density = truncated_normal_distribution(no_patients_1,0,1,-3,3)
-#cohort_1 = np.hstack([random_ids_1,ages,genders,bone_density])
-cohort_1 = np.column_stack((np.transpose(random_ids_1),np.transpose(genders)))
-write_array_to_csv(cohort_1,['id','age','gender','bone_density'],"cohort_1.csv")
+random_ids_2 = random_ids[no_patients_1:no_patients_1+no_patients_2]
 
 
-print(test_median_for_field_value(cohort_1,2,'M',1)) # Male
-print(test_median_for_field_value(cohort_1,2,'F',1)) # Female
 
-#print(ages.size)
+
+cohort_1 = create_bone_cohort(random_ids_1)
+cohort_2 = create_liver_cohort(random_ids_2)
+
+
+write_record_to_csv(cohort_1, "cohort_1.csv")
+cohort_1_read = read_record_from_csv("cohort_1.csv")
+print(test_median_for_field_value(cohort_1_read,'gender','M','age')) # Male
+print(test_median_for_field_value(cohort_1_read,'gender','F','age')) # Female
+
+
 
 
 
