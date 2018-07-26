@@ -20,7 +20,8 @@ Task 2) please provide the code that creates a pandas table joining all overlap 
 
 Task 3) please provide code that given a bucket size (window size over the variables) it will group patients into buckets and plot histogram of the buckets
 
-Task 4) bonus 1: provide code to create the maximal dataset over the joined overlap table where you have 20% men 80% women and 50% between age 55-75 all the rest evenly distributed with ages in bucket size 5
+Task 4) bonus 1: provide code to create the maximal dataset over the joined overlap table 
+	where you have 20% men 80% women and 50% between age 55-75 all the rest evenly distributed with ages in bucket size 5
 
 Task 5) bonus 2: please provide code that builds a model (any) that uses demography and two variables and predicts the third, shortly explain what you did
 
@@ -31,3 +32,9 @@ Regards,
 
 David
 
+
+
+1. twice as much female than male - the sample, not the disease
+3. What about the join with extra variables? Add by myself
+2. bucket size - population
+4. 
