@@ -53,4 +53,5 @@ Assumption: Task (3) groups the buckets of one field at a time
 
           id  age_bone gender_bone  bone_density  age_liver gender_liver  liver  age_calcium gender_calcium      calcium
 age/gender fields are redundant
-
+ids are at least 100,000  at most 3,100,000
+Three cohorts are separate, no overlapping ids
