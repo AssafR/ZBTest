@@ -2,6 +2,8 @@ import math
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
+import random
+
 from numpy import genfromtxt
 
 def random_ints_by_median(low, high, median, no_elements):
@@ -16,27 +18,8 @@ def get_genders_by_distribution(percent_female,total):
     females = int(total * percent_female)
     males = total - females
     genders = np.concatenate((np.full(females,'F',dtype=str), np.full(males,'M',dtype=str)))
+    np.random.shuffle(genders)
     return genders
-
-def plot(series, range, no_bins=1000, title=None):
-    stats_fix = series.dropna()
-    count, bins, ignored = plt.hist(stats_fix, no_bins, density=False)
-    plt.title(title)
-    #stats2 = 1 / (sigma * np.sqrt(2 * np.pi)) * np.exp(- (bins - mu) ** 2 / (2 * sigma ** 2))
-    #plt.plot(bins, linewidth=2, color='r')
-    #plt.plot(bins, color='r')
-    plt.show()
-
-def plot2(series, window_size, title=None):
-    min = series.min()
-    max = series.max()
-
-    steps = math.ceil((max-min)/window_size)
-    bins = pd.Series(range(0,steps));
-    bins = window_size * bins + min
-    series.hist(bins=bins)
-    plt.title(title)
-    plt.show()
 
 
 def test_median_for_field_value(records, val_field_name, value, numeric_field_name):
@@ -61,13 +44,22 @@ def write_record_to_csv(np_array, filename):
 
 def read_record_from_csv(filename):
     df = pd.read_csv(filename,header=0,sep=',')
-    return df # df.to_records(index=False)
-    #return genfromtxt(filename, delimiter=',',dtype=None)
+    return df
 
 def split_male_female(total,female_ratio):
     females = int(female_ratio * total)
     males = total - females
     return females,males
+
+def create_calcium_distribution(no_patients):
+    calcium_band_size_1 = no_patients // 2
+    calcium_band_size_2 = no_patients // 4
+    calcium_band_size_3 = no_patients - calcium_band_size_1 - calcium_band_size_2
+    band_1 = truncated_normal_distribution(calcium_band_size_1, 300, 200, 100, 400)
+    band_2 = truncated_normal_distribution(calcium_band_size_2, 150, 200, 0, 100)
+    band_3 = truncated_normal_distribution(calcium_band_size_3, 600, 200, 400, 1600)
+    calcium = np.concatenate([band_1, band_2, band_3])
+    return calcium
 
 def create_bone_cohort(ids):
     no_patients = ids.size
@@ -97,34 +89,51 @@ def create_calcium_cohort(ids):
     females, males = split_male_female(no_patients,0.5)
     genders = get_genders_by_distribution(0.5, no_patients)
     ages = truncated_normal_distribution(no_patients,50,20,20,90)
-    calcium_band_size_1 = no_patients // 2
-    calcium_band_size_2 = no_patients // 4
-    calcium_band_size_3 = no_patients - calcium_band_size_1 - calcium_band_size_2
-    band_1 = truncated_normal_distribution(calcium_band_size_1,300,200,100, 400)
-    band_2 = truncated_normal_distribution(calcium_band_size_2,150,200,  0, 100)
-    band_3 = truncated_normal_distribution(calcium_band_size_3,600,200,400,1600)
-    calcium = np.concatenate([band_1,band_2,band_3])
+    calcium = create_calcium_distribution(no_patients)
     cohort = np.rec.fromarrays([ids,ages,genders,calcium],names=['id', 'age', 'gender', 'calcium'])
     return cohort
 
+
+def plot(df, window_size, title=None):
+    series = df[df.notnull()]
+    min = series.min()
+    max = series.max()
+
+    steps = math.ceil((max-min)/window_size)
+    bins = pd.Series(range(0,steps));
+    bins = window_size * bins + min
+    series.hist(bins=bins)
+    plt.title(title)
+    plt.show()
+
 def data_tests(cohort_1_read,cohort_2_read,cohort_3_read,joint_cohort):
-    plot2(cohort_1_read['bone_density'], 0.05, 'Bone Density')
-    plot2(cohort_2_read['liver'], 5, 'Liver')
-    plot2(cohort_3_read['calcium'], 5, 'Coronary Calcium')
+    plot(cohort_1_read['bone_density'], 0.05, 'Bone Density')
+    plot(cohort_2_read['liver'], 5, 'Liver')
+    plot(cohort_3_read['calcium'], 20, 'Coronary Calcium')
     print(test_median_for_field_value(cohort_1_read,'gender','M','age')) # Male
     print(test_median_for_field_value(cohort_1_read,'gender','F','age')) # Female
+    print(joint_cohort.shape)
     print( np.median(cohort_2_read['liver']))
     print(joint_cohort.to_string())
-    plot2(joint_cohort['calcium'], 5, 'Coronary Calcium')
+    plot(joint_cohort['calcium'], 20, 'Coronary Calcium')
 
+
+
+def calculate_print_overlap(field1, field2, population):
+    overlap, total, ratio = calculate_two_fields_overlap(population, field1, field2)
+    print("Fields: [{3},{4}], Total:{0} Overlap:{1} Percent:{2}".format(total, overlap, round(ratio * 100), field1, field2))
+
+def calculate_two_fields_overlap(df, field1, field2):
+    overlap = df[~(df[field1].isnull() | df[field2].isnull())]
+    return overlap.shape[0], df.shape[0], overlap.shape[0] / df.shape[0]
 
 def main():
-    no_patients_1 = 500
-    no_patients_2 = 400
-    no_patients_3 = 500
+    no_patients_1 = 5000
+    no_patients_2 = 5000
+    no_patients_3 = 5000
     total_patients = no_patients_1 + no_patients_2 + no_patients_3
 
-    random_ids = np.random.random_integers(100000,3000000, total_patients)
+    random_ids =  pd.Series(random.sample(range(3000000), total_patients))
     random_ids_1 = random_ids[0:no_patients_1]
     random_ids_2 = random_ids[no_patients_1:no_patients_1+no_patients_2]
     random_ids_3 = random_ids[no_patients_1+no_patients_2:no_patients_1+no_patients_2+no_patients_3]
@@ -134,36 +143,90 @@ def main():
     cohort_3 = create_calcium_cohort(random_ids_3)
 
     write_record_to_csv(cohort_1, "cohort_1.csv")
-    cohort_1_read = read_record_from_csv("cohort_1.csv")
-
     write_record_to_csv(cohort_2, "cohort_2.csv")
-    cohort_2_read = read_record_from_csv("cohort_2.csv")
-
     write_record_to_csv(cohort_3, "cohort_3.csv")
+
+    cohort_1_read = read_record_from_csv("cohort_1.csv")
+    cohort_2_read = read_record_from_csv("cohort_2.csv")
     cohort_3_read = read_record_from_csv("cohort_3.csv")
+
 
     # Join the data
     joint_cohort = cohort_1_read.copy(deep=True)
     joint_cohort = joint_cohort.join(cohort_2_read.set_index('id'),lsuffix='_bone',rsuffix='_liver',on='id',how='outer')
     joint_cohort = joint_cohort.join(cohort_3_read.set_index('id'),lsuffix='_liver',rsuffix='_calcium',on='id',how='outer')
     joint_cohort = joint_cohort.rename(index=str, columns={"age": "age_calcium", "gender": "gender_calcium"}) # For compatibility
+    write_record_to_csv(joint_cohort, "joint_cohort.csv")
 
 
-    series = joint_cohort['calcium']
-    data_tests(cohort_1_read, cohort_2_read, cohort_3_read, joint_cohort)
-    # window_size = 5
-    # bins = range(math.floor(series.min() / window_size),math.ceil(series.max() / window_size),window_size)
-    # series.hist(bins=bins)
-    # plt.show()
+    missing_bone = joint_cohort['bone_density'].isnull()
+    to_fill_bone = missing_bone.sample(frac=0.6)
+    missing_bone_values = pd.Series(truncated_normal_distribution(to_fill_bone.size, 0, 1, -3, 3))
+    #missing_bone_values.reshape(missing_bone_values.size,1)
+    #print(to_fill_bone.shape)
+    #print(joint_cohort.loc[missing_bone].sample(frac=0.6).to_string())
+    #joint_cohort['bone_density'] = joint_cohort['bone_density'].fillna(value=missing_bone_values)
+    #write_record_to_csv(joint_cohort, "joint_cohort_.csv")
+
+
+
+
+    added_noise_bone = pd.Series(truncated_normal_distribution(joint_cohort.shape[0], 0, 5, -3, 3))
+    #plot(joint_cohort['bone_density'], 0.05, 'Bone Density Before')
+    #plot(added_noise_bone, 0.05, 'Bone Density Noise')
+    #plot((joint_cohort['liver']/25 -3), 0.05,'Liver Adjusted')
+    #liv = (joint_cohort['liver']/25 -3);
+
+    def impute_missing_values_artificially(roww):
+        row = roww.copy(deep=True)
+ #       print("\n-----\nRow Before=\n",row)
+        new_value = None
+        if np.isnan(row['bone_density']):
+            if (np.random.random() < 0.8): # Fill 80% of the empty bone_density field
+                new_value = np.random.random() * 6 -3;
+                if row['gender_bone'] == 'F':
+                    if not np.isnan(row['liver']):
+                        new_value = row['liver']/25 -3
+                if not np.isnan(row['calcium']):
+                        new_value = (row['calcium'] / 400 - 3)
+                row['bone_density'] = new_value
+
+        if np.isnan(row['calcium']):
+            if (np.random.random() < 0.8):
+                new_value = np.random.random() * 1600;
+                if row['age_calcium'] > 50:
+                    new_value = row['age_calcium'] * 10
+                elif row['age_calcium']> 30:
+                    new_value = row['age_calcium'] * 5
+                row['calcium'] = new_value
+        if np.isnan(row['liver']):
+            if (np.random.random() < 0.51):
+                new_value = 150* np.random.random()
+                row['liver'] = new_value
+        return row
+
+
+    joint_cohort.reset_index()
+
+    #df.loc[df['foo'].isnull(), 'foo'] = df['bar']
+    joint_cohort['gender_bone'].fillna(joint_cohort['gender_liver'],inplace=True)
+    joint_cohort['gender_bone'].fillna(joint_cohort['gender_calcium'],inplace=True)
+    joint_cohort['age_calcium'].fillna(joint_cohort['age_liver'],inplace=True)
+    joint_cohort['age_calcium'].fillna(joint_cohort['age_bone'],inplace=True)
+
+    #plot(joint_cohort['calcium'], 10, 'Calcium Before')
+    joint_cohort = joint_cohort.apply(impute_missing_values_artificially,axis=1)
+
+
+    #plot(joint_cohort['bone_density'], 0.1, 'Bone Density After')
+    #plot(joint_cohort['calcium'], 10, 'Calcium After')
+    print(joint_cohort.to_string())
+
+    calculate_print_overlap('calcium', 'liver', joint_cohort)
+    calculate_print_overlap('calcium', 'bone_density', joint_cohort)
+    calculate_print_overlap('bone_density', 'liver', joint_cohort)
+
 
 
 if __name__ == "__main__":
     main()
-
-#plot(random_ids_1,100)
-#plot(s,range(20,110))
-
-#s = random_ages
-#plot(ages,range(0,110),100)
-
-
