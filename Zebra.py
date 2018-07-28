@@ -2,7 +2,6 @@ import math
 import random
 import numpy as np
 from matplotlib import pyplot
-from sklearn.ensemble import RandomForestClassifier
 import pandas as pd
 import matplotlib.pyplot as plt
 import sklearn
@@ -11,6 +10,7 @@ from sklearn.preprocessing import StandardScaler
 from sklearn.metrics import r2_score
 from scipy.stats import spearmanr, pearsonr
 from sklearn.linear_model import LinearRegression
+from sklearn.ensemble import RandomForestClassifier
 
 def random_ints_by_median(low, high, median, no_elements):
     """ Return an array of random integers with range and median """
@@ -34,7 +34,7 @@ def test_median_for_field_value(records, val_field_name, value, numeric_field_na
     return np.median(nums_in_field)
 
 def truncated_normal_distribution(length,mu,sigma,left,right):
-    """ Return normal distribution of certain length making sure not to have values outside [left,right] """
+    """ Calculate set of normal distribution random numbers, making sure not to have values outside [left,right] """
     result = np.zeros(length)
     outside_range = np.full(length,True,dtype=bool)
     while(np.sum(outside_range)>0): # Re-draw all elements which fell outside the range
@@ -51,7 +51,7 @@ def read_record_from_csv(filename):
     df = pd.read_csv(filename,header=0,sep=',')
     return df
 
-def split_male_female(total,female_ratio):
+def calc_split_male_female(total, female_ratio):
     females = int(female_ratio * total)
     males = total - females
     return females,males
@@ -69,7 +69,7 @@ def create_calcium_distribution(no_patients):
 def create_bone_cohort(ids):
     no_patients = ids.size
     female_ratio = 0.5
-    females, males = split_male_female(no_patients,female_ratio)
+    females, males = calc_split_male_female(no_patients, female_ratio)
     ages_female = random_ints_by_median(10, 100, 68, females)
     ages_male   = random_ints_by_median(10, 100, 62, males)
     ages = np.concatenate([ages_female, ages_male])
@@ -82,7 +82,7 @@ def create_bone_cohort(ids):
 def create_liver_cohort(ids):
     no_patients = ids.size
     female_ratio = 0.5
-    females, males = split_male_female(no_patients,female_ratio)
+    females, males = calc_split_male_female(no_patients, female_ratio)
     genders = get_genders_by_distribution(female_ratio, no_patients)
     ages = truncated_normal_distribution(no_patients,40,20,20,90)
     liver =  random_ints_by_median(10, 150, 45, no_patients)
@@ -91,15 +91,15 @@ def create_liver_cohort(ids):
 
 def create_calcium_cohort(ids):
     no_patients = ids.size
-    females, males = split_male_female(no_patients,0.5)
+    females, males = calc_split_male_female(no_patients, 0.5)
     genders = get_genders_by_distribution(0.5, no_patients)
     ages = truncated_normal_distribution(no_patients,50,20,20,90)
     calcium = create_calcium_distribution(no_patients)
     cohort = np.rec.fromarrays([ids,ages,genders,calcium],names=['id', 'age', 'gender', 'calcium'])
     return cohort
 
-def create_read_write_cohorts(random_ids_1, random_ids_2, random_ids_3,readonly=False):
-    if not readonly:
+def create_cohorts_save_reload(random_ids_1, random_ids_2, random_ids_3, readonly=False):
+    if not readonly:   # Optimization when files already exist
         cohort_1 = create_bone_cohort(random_ids_1)
         cohort_2 = create_liver_cohort(random_ids_2)
         cohort_3 = create_calcium_cohort(random_ids_3)
@@ -112,7 +112,7 @@ def create_read_write_cohorts(random_ids_1, random_ids_2, random_ids_3,readonly=
     cohort_3_read = read_record_from_csv("cohort_3.csv")
     return cohort_1_read, cohort_2_read, cohort_3_read
 
-def plot(df, window_size, title=None):
+def plot_hist(df, window_size, title=None):
     series = df[df.notnull()]
     min = series.min()
     max = series.max()
@@ -124,21 +124,21 @@ def plot(df, window_size, title=None):
     plt.title(title)
     plt.show()
 
-def data_tests(cohort_1_read,cohort_2_read,cohort_3_read,joint_cohort):
-    plot(cohort_1_read['bone_density'], 0.05, 'Cohort 1: Bone Density')
-    plot(cohort_2_read['liver'], 5, 'Cohort 2: Liver')
-    plot(cohort_3_read['calcium'], 20, 'Cohort 3: Coronary Calcium')
+def data_sanity_tests(cohort_1_read, cohort_2_read, cohort_3_read, joint_cohort):
+    plot_hist(cohort_1_read['bone_density'], 0.05, 'Cohort 1: Bone Density')
+    plot_hist(cohort_2_read['liver'], 5, 'Cohort 2: Liver')
+    plot_hist(cohort_3_read['calcium'], 20, 'Cohort 3: Coronary Calcium')
     print("Median for age, females cohort 1:",test_median_for_field_value(cohort_1_read,'gender','F','age')) # Female
     print("Median for age,   males cohort 1:",test_median_for_field_value(cohort_1_read,'gender','M','age')) # Male
     print("Median of liver sample in cohort 2:",np.median(cohort_2_read['liver']))
     print("Size of joined cohort:",joint_cohort.shape)
-    plot(joint_cohort['calcium'], 20, 'Coronary Calcium After Inserting New Data')
-    calculate_print_overlap('calcium', 'liver', joint_cohort)
-    calculate_print_overlap('calcium', 'bone_density', joint_cohort)
-    calculate_print_overlap('bone_density', 'liver', joint_cohort)
+    plot_hist(joint_cohort['calcium'], 20, 'Coronary Calcium After Inserting New Data')
+    print_overlap_stats('calcium', 'liver', joint_cohort)
+    print_overlap_stats('calcium', 'bone_density', joint_cohort)
+    print_overlap_stats('bone_density', 'liver', joint_cohort)
 
 
-def calculate_print_overlap(field1, field2, population):
+def print_overlap_stats(field1, field2, population):
     overlap, total, ratio = calculate_two_fields_overlap(population, field1, field2)
     print("Fields: [{3},{4}], Total:{0} Overlap:{1} Percent:{2}".format(total, overlap, round(ratio * 100), field1, field2))
 
@@ -264,7 +264,7 @@ def main():
     random_ids_3 = random_ids[no_patients_1+no_patients_2:no_patients_1+no_patients_2+no_patients_3]
 
     cohort_1_read, cohort_2_read, cohort_3_read = \
-        create_read_write_cohorts(random_ids_1, random_ids_2, random_ids_3,False)
+        create_cohorts_save_reload(random_ids_1, random_ids_2, random_ids_3, False)
 
     # Join the data
     joint_cohort = cohort_1_read.copy(deep=True)
