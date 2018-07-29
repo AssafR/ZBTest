@@ -1,0 +1,16 @@
+Assumptions:
+
+1. Ids can be between 100,000 and 3,100,00
+2. Ages are 10...100
+3. Unless stated otherwise, Female/Male ratio is 1:1
+4. Age distribution for liver is a "flattened" normal distribution, mean=40, between 20-90
+5. For part 1, I deliberately created 3 samples with no overlapping ids. Therefore the joined set size is the sum of all 3 separate ones. 
+6. The samples are created for each cohort separately with only the fields relevant for each CSV file.
+7. After the join, new data is created in the missing fields for overlap purposes.
+8. The imputed new data has a different distribution (just for fun and possibly preperation for the bonus question)
+9. Method data_sanity_tests checks and prints some of the data characteristics
+
+
+
+
+
